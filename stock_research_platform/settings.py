@@ -13,10 +13,25 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# AWS S3 Storage Settings
+# Moved up to ensure it's set before other parts of Django might initialize storage
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'valuation-bucket')
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'ap-northeast-2')
+AWS_S3_FILE_OVERWRITE = False  # Don't overwrite files with the same name
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400', # Cache static assets for 1 day
+}
+AWS_LOCATION = 'media' # Store media files in a 'media/' subdirectory in your S3 bucket
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com' # For constructing file URLs
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -44,6 +59,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "djoser",
     "rest_framework_simplejwt",
+    "storages",
     # Local apps
     "users",
     "papers",
@@ -129,8 +145,22 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 # Media files
+# MEDIA_URL and MEDIA_ROOT are still relevant for local dev or if DEFAULT_FILE_STORAGE is not S3
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# AWS S3 Storage Settings # This section is now moved up
+# Ensure you have 'django-storages' and 'boto3' installed (pip install django-storages boto3)
+# And set the following environment variables:
+# AWS_ACCESS_KEY_ID
+# AWS_SECRET_ACCESS_KEY
+
+# AWS_S3_FILE_OVERWRITE = False # Line 145 - MOVED
+# AWS_S3_OBJECT_PARAMETERS = { # MOVED
+# 'CacheControl': 'max-age=86400',
+# }
+# AWS_LOCATION = 'media' # MOVED
+# AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com' # MOVED
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

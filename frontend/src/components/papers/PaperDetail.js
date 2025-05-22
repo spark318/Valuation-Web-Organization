@@ -123,7 +123,7 @@ const PaperDetail = () => {
             <Button
               variant="contained"
               startIcon={<DescriptionIcon />}
-              href={paper.pdf_file}
+              href={paper.pdf_file_url}
               target="_blank"
               rel="noopener noreferrer"
             >

@@ -1,13 +1,20 @@
 from django.db import models
-
-# Create your models here.
 from django.conf import settings
-from django.db import models
+# Import S3Boto3Storage and instantiate it
+from storages.backends.s3boto3 import S3Boto3Storage
+
+# Define the S3 storage instance to be used for specific fields
+# This instance will use the AWS settings from your settings.py
+s3_media_storage = S3Boto3Storage()
 
 class Paper(models.Model):
     title = models.CharField(max_length=255)
     summary = models.TextField()
-    pdf_file = models.FileField(upload_to='research_papers/pdfs/')
+    # Explicitly use the S3 storage instance for this field
+    pdf_file = models.FileField(
+        upload_to='research_papers/pdfs/', 
+        storage=s3_media_storage  # Use the S3 instance
+    )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
