@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import useAuthToken from '../hooks/useAuthToken';
 import { loginUser, registerUser, fetchUserProfile, setAuthToken } from '../services/api';
 import axios from 'axios';
@@ -10,6 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const { getToken, setTokens, clearTokens } = useAuthToken();
+  const initialized = useRef(false);
 
   // Configure Axios interceptor
 //   useEffect(() => {
@@ -34,6 +35,9 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
+      if (initialized.current) return;
+      initialized.current = true;
+
       console.log('Initializing auth state');
       const token = getToken();
       if (token) {
