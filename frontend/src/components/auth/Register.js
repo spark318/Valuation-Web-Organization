@@ -52,14 +52,11 @@ const Register = () => {
       username,
       email,
       password,
-      // Djoser might also require re_password if you configure it that way,
-      // but usually, it's just password on the /users/ endpoint.
-      // If your backend expects password confirmation field, add it here:
-      // re_password: password2
+      re_password: password2  // Add password confirmation
     };
 
     try {
-      await registerUser(userData); // registerUser should point to /auth/users/
+      await registerUser(userData);
       setSuccessMessage('Registration successful! Please check your email for verification if required, then log in.');
       // Optionally, redirect after a short delay or keep the message
       setTimeout(() => {

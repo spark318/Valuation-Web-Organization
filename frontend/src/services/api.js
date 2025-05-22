@@ -2,18 +2,15 @@ import axios from 'axios';
 
 // Create an Axios instance
 const apiClient = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000/auth/', // Fallback if .env is not set
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000', // Remove /auth/ from base URL
 });
 
 // Function to handle login
 export const loginUser = async (username, password) => {
   try {
-    const response = await apiClient.post('jwt/create/', { username, password });
-    // Assuming your API returns tokens in response.data
-    // e.g., response.data.access and response.data.refresh
+    const response = await apiClient.post('/api/token/', { username, password });
     return response.data;
   } catch (error) {
-    // Handle or throw error to be caught by the component
     console.error('Login failed:', error.response ? error.response.data : error.message);
     throw error.response ? error.response.data : new Error('Login failed');
   }
@@ -23,7 +20,7 @@ export const loginUser = async (username, password) => {
 export const registerUser = async (userData) => {
   // userData should be an object, e.g., { username, email, password }
   try {
-    const response = await apiClient.post('users/', userData);
+    const response = await apiClient.post('/auth/users/', userData);
     return response.data;
   } catch (error) {
     console.error('Registration failed:', error.response ? error.response.data : error.message);
@@ -31,16 +28,14 @@ export const registerUser = async (userData) => {
   }
 };
 
-// Optional: Function to fetch user profile (example)
+// Function to fetch user profile
 export const fetchUserProfile = async () => {
   try {
-    // Ensure the token is set in Authorization header for this request
-    // This can be done globally in your AuthContext or per request
-    const token = localStorage.getItem('accessToken'); // Or however you store it
+    const token = localStorage.getItem('accessToken');
     if (!token) {
       throw new Error('No access token found.');
     }
-    const response = await apiClient.get('users/me/', {
+    const response = await apiClient.get('/auth/users/me/', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -55,7 +50,7 @@ export const fetchUserProfile = async () => {
 // You can add an interceptor to automatically add the token to requests
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken'); // Or your preferred way of storing tokens
+    const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
