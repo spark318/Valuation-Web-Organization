@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import useAuthToken from '../hooks/useAuthToken';
-import { loginUser, registerUser, fetchUserProfile } from '../services/api';
+import { loginUser, registerUser, fetchUserProfile, setAuthToken } from '../services/api';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
@@ -9,43 +9,48 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { getToken, getRefreshToken, setTokens, clearTokens } = useAuthToken();
+  const { getToken, setTokens, clearTokens } = useAuthToken();
 
   // Configure Axios interceptor
-  useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        if (error.response?.status === 401) {
-          // Handle 401 errors (e.g., token expired)
-          clearTokens();
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-        return Promise.reject(error);
-      }
-    );
+//   useEffect(() => {
+//     const interceptor = axios.interceptors.response.use(
+//       (response) => response,
+//       async (error) => {
+//         if (error.response?.status === 401) {
+//           console.log('401 error caught in interceptor'); // Debug log
+//           clearTokens();
+//           setUser(null);
+//           setIsAuthenticated(false);
+//           setAuthToken(null);
+//         }
+//         return Promise.reject(error);
+//       }
+//     );
 
-    return () => {
-      axios.interceptors.response.eject(interceptor);
-    };
-  }, [clearTokens]);
+//     return () => {
+//       axios.interceptors.response.eject(interceptor);
+//     };
+//   }, [clearTokens]);
 
   useEffect(() => {
     const initializeAuth = async () => {
+      console.log('Initializing auth state');
       const token = getToken();
       if (token) {
+        console.log('Found existing token, attempting to fetch profile');
         try {
-          // Set default authorization header
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          setAuthToken(token);
           const userData = await fetchUserProfile();
+          console.log('Successfully fetched user profile');
           setUser(userData);
           setIsAuthenticated(true);
         } catch (error) {
-          console.error('Failed to fetch user profile:', error);
+          console.log('Failed to fetch user profile during init:', error.message);
           clearTokens();
-          delete axios.defaults.headers.common['Authorization'];
+          setAuthToken(null);
         }
+      } else {
+        console.log('No existing token found');
       }
       setIsLoading(false);
     };
@@ -55,44 +60,64 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
+      console.log('Login attempt in AuthContext');
+      
+      // First, get the tokens
       const response = await loginUser(credentials);
-      const { access, refresh } = response.data;
+      console.log('Login response received');
       
-      // Set tokens and update Axios header
-      setTokens(access, refresh);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access}`;
-      
-      // Fetch and set user data
+      const { access: accessToken, refresh: refreshToken } = response.data;
+      console.log('Tokens extracted from response');
+
+      // Set the tokens in localStorage and state
+      setTokens(accessToken, refreshToken);
+      console.log('Tokens set in localStorage');
+
+      // Set the authorization header for subsequent requests
+      setAuthToken(accessToken);
+      console.log('Authorization header set');
+
+      // Now fetch the user profile
+      console.log('Fetching user profile after login');
       const userData = await fetchUserProfile();
+      console.log('User profile received');
+      
       setUser(userData);
       setIsAuthenticated(true);
-      
+      console.log('Login process completed successfully');
+
       return userData;
     } catch (error) {
-      console.error('Login failed:', error);
+      console.log('Login failed in AuthContext:', error.message);
+      console.log('Error details:', error.response?.data);
+      clearTokens();
+      setAuthToken(null);
       throw error;
     }
   };
 
   const register = async (userData) => {
     try {
+      console.log('Registration attempt');
       const response = await registerUser(userData);
-      // Auto-login after successful registration
+      console.log('Registration successful, proceeding to auto-login');
       return await login({
         username: userData.username,
         password: userData.password
       });
     } catch (error) {
-      console.error('Registration failed:', error);
+      console.log('Registration failed:', error.message);
       throw error;
     }
   };
 
   const logout = () => {
+    console.log('Logout initiated');
     clearTokens();
     setUser(null);
     setIsAuthenticated(false);
-    delete axios.defaults.headers.common['Authorization'];
+    setAuthToken(null);
+    console.log('Logout completed');
   };
 
   const value = {
