@@ -1,45 +1,79 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
+  Card,
+  CardContent,
   Typography,
-  Paper,
-  CircularProgress,
+  Button,
+  Skeleton,
   Alert,
   Box,
   Divider,
 } from '@mui/material';
-import { fetchPaperById } from '../../services/paperService';
-import { format } from 'date-fns';
+import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
+import DescriptionIcon from '@mui/icons-material/Description';
+import PersonIcon from '@mui/icons-material/Person';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CommentList from './CommentList';
+import CommentForm from './CommentForm';
 
 const PaperDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [paper, setPaper] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const [commentKey, setCommentKey] = useState(0); // For forcing CommentList refresh
 
   useEffect(() => {
-    const loadPaper = async () => {
+    const fetchPaper = async () => {
       try {
-        setLoading(true);
-        const data = await fetchPaperById(id);
-        setPaper(data);
-        setError(null);
+        const token = localStorage.getItem('accessToken');
+        const response = await axios.get(`/api/papers/${id}/`, {
+          headers: {
+            'Authorization': `JWT ${token}`
+          }
+        });
+        setPaper(response.data);
+        setError('');
       } catch (err) {
-        setError(err.message || 'Failed to load paper details');
+        setError(err.response?.data?.detail || 'Failed to fetch paper details');
       } finally {
         setLoading(false);
       }
     };
 
-    loadPaper();
-  }, [id]);
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    fetchPaper();
+  }, [id, isAuthenticated, navigate]);
+
+  const handleCommentPosted = () => {
+    setCommentKey(prev => prev + 1); // Force CommentList to refresh
+  };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Card>
+          <CardContent>
+            <Skeleton variant="text" height={40} width="60%" />
+            <Skeleton variant="text" height={20} width="40%" sx={{ mb: 2 }} />
+            <Skeleton variant="rectangular" height={100} sx={{ mb: 2 }} />
+            <Skeleton variant="text" height={20} width="30%" />
+          </CardContent>
+        </Card>
+      </Container>
     );
   }
 
@@ -54,44 +88,64 @@ const PaperDetail = () => {
   if (!paper) {
     return (
       <Container maxWidth="md" sx={{ mt: 4 }}>
-        <Alert severity="info">Paper not found.</Alert>
+        <Alert severity="info">Paper not found</Alert>
       </Container>
     );
   }
 
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
-      <Paper elevation={2} sx={{ p: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          {paper.title}
-        </Typography>
-        
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" color="text.secondary">
-            By {paper.author_username || 'Anonymous'}
+      <Card>
+        <CardContent>
+          <Typography variant="h4" component="h1" gutterBottom>
+            {paper.title}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Uploaded on {format(new Date(paper.uploaded_at), 'MMMM d, yyyy')}
+
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, color: 'text.secondary' }}>
+            <PersonIcon sx={{ mr: 1 }} />
+            <Typography variant="body2">
+              Author: {paper.author_username}
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, color: 'text.secondary' }}>
+            <AccessTimeIcon sx={{ mr: 1 }} />
+            <Typography variant="body2">
+              Uploaded: {new Date(paper.uploaded_at).toLocaleDateString()}
+            </Typography>
+          </Box>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Typography variant="h6" gutterBottom>
+            Summary
           </Typography>
-        </Box>
+          <Typography variant="body1" paragraph>
+            {paper.summary}
+          </Typography>
 
-        <Divider sx={{ my: 3 }} />
+          <Box sx={{ mt: 3 }}>
+            <Button
+              variant="contained"
+              startIcon={<DescriptionIcon />}
+              href={paper.pdf_file}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View PDF
+            </Button>
+          </Box>
 
-        <Typography variant="body1" paragraph>
-          {paper.abstract || 'No abstract available.'}
-        </Typography>
+          <Divider sx={{ my: 4 }} />
 
-        {paper.content && (
-          <>
-            <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
-              Content
-            </Typography>
-            <Typography variant="body1" component="div" sx={{ whiteSpace: 'pre-wrap' }}>
-              {paper.content}
-            </Typography>
-          </>
-        )}
-      </Paper>
+          <Typography variant="h5" gutterBottom>
+            Comments
+          </Typography>
+          
+          <CommentForm paperId={id} onCommentPosted={handleCommentPosted} />
+          <CommentList key={commentKey} paperId={id} />
+        </CardContent>
+      </Card>
     </Container>
   );
 };
