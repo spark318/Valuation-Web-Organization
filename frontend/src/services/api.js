@@ -1,58 +1,32 @@
 import axios from 'axios';
 
-// Create an Axios instance
-const apiClient = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000', // Remove /auth/ from base URL
-});
+const API_URL = 'http://localhost:8000/api';
+
+// Configure axios defaults
+axios.defaults.baseURL = API_URL;
+axios.defaults.headers.common['Content-Type'] = 'application/json';
 
 // Function to handle login
-export const loginUser = async (username, password) => {
-  try {
-    const response = await apiClient.post('/api/token/', { username, password });
-    return response.data;
-  } catch (error) {
-    console.error('Login failed:', error.response ? error.response.data : error.message);
-    throw error.response ? error.response.data : new Error('Login failed');
-  }
+export const loginUser = (credentials) => {
+  return axios.post('/token/', credentials);
 };
 
 // Function to handle registration
-export const registerUser = async (userData) => {
-  // userData should be an object, e.g., { username, email, password }
-  try {
-    const response = await apiClient.post('/auth/users/', userData);
-    return response.data;
-  } catch (error) {
-    console.error('Registration failed:', error.response ? error.response.data : error.message);
-    throw error.response ? error.response.data : new Error('Registration failed');
-  }
+export const registerUser = (userData) => {
+  return axios.post('/auth/users/', userData);
 };
 
 // Function to fetch user profile
-export const fetchUserProfile = async () => {
-  try {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      throw new Error('No access token found.');
-    }
-    const response = await apiClient.get('/auth/users/me/', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Fetching user profile failed:', error.response ? error.response.data : error.message);
-    throw error.response ? error.response.data : new Error('Fetching user profile failed');
-  }
+export const fetchUserProfile = () => {
+  return axios.get('/auth/users/me/');
 };
 
-// You can add an interceptor to automatically add the token to requests
-apiClient.interceptors.request.use(
+// Add request interceptor to add auth token
+axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -61,4 +35,41 @@ apiClient.interceptors.request.use(
   }
 );
 
-export default apiClient; // Export the configured instance if you want to use it directly elsewhere
+// Add response interceptor to handle token refresh
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is 401 and we haven't tried to refresh token yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        const response = await axios.post('/token/refresh/', {
+          refresh: refreshToken
+        });
+
+        const { access } = response.data;
+        localStorage.setItem('accessToken', access);
+        
+        // Retry the original request with new token
+        originalRequest.headers.Authorization = `Bearer ${access}`;
+        return axios(originalRequest);
+      } catch (refreshError) {
+        // If refresh fails, clear tokens and redirect to login
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
