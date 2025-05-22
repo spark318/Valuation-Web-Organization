@@ -1,13 +1,43 @@
-import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import useAuthToken from '../hooks/useAuthToken';
 import { loginUser, registerUser, fetchUserProfile, setAuthToken } from '../services/api';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
 
+// Add request interceptor
+axios.interceptors.request.use(
+  (config) => {
+    console.log('Making request to:', config.url);
+    console.log('Request headers:', config.headers);
+    return config;
+  },
+  (error) => {
+    console.error('Request error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor
+axios.interceptors.response.use(
+  (response) => {
+    console.log('Response received:', response.config.url);
+    console.log('Response data:', response.data);
+    return response;
+  },
+  (error) => {
+    console.error('Response error:', error);
+    if (error.response) {
+      console.error('Error status:', error.response.status);
+      console.error('Error data:', error.response.data);
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { getToken, setTokens, clearTokens } = useAuthToken();
   const initialized = useRef(false);
@@ -33,68 +63,54 @@ export const AuthProvider = ({ children }) => {
 //     };
 //   }, [clearTokens]);
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      if (initialized.current) return;
-      initialized.current = true;
-
-      console.log('Initializing auth state');
-      const token = getToken();
-      if (token) {
-        console.log('Found existing token, attempting to fetch profile');
-        try {
-          setAuthToken(token);
-          const userData = await fetchUserProfile();
-          console.log('Successfully fetched user profile');
-          setUser(userData);
-          setIsAuthenticated(true);
-        } catch (error) {
-          console.log('Failed to fetch user profile during init:', error.message);
-          clearTokens();
-          setAuthToken(null);
-        }
-      } else {
-        console.log('No existing token found');
+  const initializeAuth = async () => {
+    if (initialized.current) return;
+    initialized.current = true;
+    
+    console.log('Initializing auth state...');
+    const token = localStorage.getItem('accessToken');
+    
+    if (token) {
+      console.log('Found existing token, fetching user profile...');
+      try {
+        const userData = await fetchUserProfile();
+        console.log('User profile fetched successfully:', userData);
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+        setAuthToken(null);
       }
-      setIsLoading(false);
-    };
+    } else {
+      console.log('No existing token found');
+    }
+    setIsLoading(false);
+  };
 
+  useEffect(() => {
     initializeAuth();
-  }, [getToken, clearTokens]);
+  }, []);
 
   const login = async (credentials) => {
     try {
-      console.log('Login attempt in AuthContext');
-      
-      // First, get the tokens
+      console.log('Login attempt with credentials:', credentials);
       const response = await loginUser(credentials);
-      console.log('Login response received');
+      console.log('Login response received:', response);
       
-      const { access: accessToken, refresh: refreshToken } = response.data;
-      console.log('Tokens extracted from response');
-
-      // Set the tokens in localStorage and state
-      setTokens(accessToken, refreshToken);
-      console.log('Tokens set in localStorage');
-
-      // Set the authorization header for subsequent requests
-      setAuthToken(accessToken);
-      console.log('Authorization header set');
-
-      // Now fetch the user profile
-      console.log('Fetching user profile after login');
-      const userData = await fetchUserProfile();
-      console.log('User profile received');
-      
-      setUser(userData);
-      setIsAuthenticated(true);
-      console.log('Login process completed successfully');
-
-      return userData;
+      if (response && response.access) {
+        console.log('Setting auth token and fetching user profile...');
+        setAuthToken(response.access);
+        const userData = await fetchUserProfile();
+        console.log('User profile fetched after login:', userData);
+        setUser(userData);
+        setIsAuthenticated(true);
+        return userData;
+      } else {
+        throw new Error('Invalid response format from login');
+      }
     } catch (error) {
-      console.log('Login failed in AuthContext:', error.message);
-      console.log('Error details:', error.response?.data);
-      clearTokens();
+      console.error('Login failed in AuthContext:', error);
+      console.error('Error details:', error.message);
       setAuthToken(null);
       throw error;
     }
@@ -102,35 +118,34 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      console.log('Registration attempt');
+      console.log('Registration attempt with data:', userData);
       const response = await registerUser(userData);
-      console.log('Registration successful, proceeding to auto-login');
+      console.log('Registration successful, attempting auto-login...');
       return await login({
         username: userData.username,
         password: userData.password
       });
     } catch (error) {
-      console.log('Registration failed:', error.message);
+      console.error('Registration failed:', error);
       throw error;
     }
   };
 
   const logout = () => {
     console.log('Logout initiated');
-    clearTokens();
+    setAuthToken(null);
     setUser(null);
     setIsAuthenticated(false);
-    setAuthToken(null);
     console.log('Logout completed');
   };
 
   const value = {
-    isAuthenticated,
     user,
+    isAuthenticated,
     isLoading,
     login,
-    logout,
     register,
+    logout
   };
 
   return (

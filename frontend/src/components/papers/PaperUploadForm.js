@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import axios from 'axios';
+import { uploadPaper } from '../../services/paperService';
 
 // Styled components
 const VisuallyHiddenInput = styled('input')({
@@ -77,13 +77,7 @@ const PaperUploadForm = () => {
       uploadData.append('summary', formData.summary);
       uploadData.append('pdf_file', selectedFile);
 
-      const token = localStorage.getItem('accessToken');
-      const response = await axios.post('/api/papers/', uploadData, {
-        headers: {
-          'Authorization': `JWT ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await uploadPaper(uploadData);
 
       setSuccessMessage('Paper uploaded successfully!');
       setFormData({ title: '', summary: '' });
@@ -94,7 +88,7 @@ const PaperUploadForm = () => {
       if (fileInput) fileInput.value = '';
 
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to upload paper. Please try again.');
+      setError(err.message || 'Failed to upload paper. Please try again.');
     } finally {
       setLoading(false);
     }

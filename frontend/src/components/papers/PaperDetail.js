@@ -12,12 +12,12 @@ import {
   Divider,
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
-import axios from 'axios';
 import DescriptionIcon from '@mui/icons-material/Description';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CommentList from './CommentList';
 import CommentForm from './CommentForm';
+import { fetchPaperById } from '../../services/paperService';
 
 const PaperDetail = () => {
   const { id } = useParams();
@@ -29,18 +29,13 @@ const PaperDetail = () => {
   const [commentKey, setCommentKey] = useState(0); // For forcing CommentList refresh
 
   useEffect(() => {
-    const fetchPaper = async () => {
+    const loadPaper = async () => {
       try {
-        const token = localStorage.getItem('accessToken');
-        const response = await axios.get(`/api/papers/${id}/`, {
-          headers: {
-            'Authorization': `JWT ${token}`
-          }
-        });
-        setPaper(response.data);
+        const data = await fetchPaperById(id);
+        setPaper(data);
         setError('');
       } catch (err) {
-        setError(err.response?.data?.detail || 'Failed to fetch paper details');
+        setError(err.message || 'Failed to fetch paper details');
       } finally {
         setLoading(false);
       }
@@ -51,7 +46,7 @@ const PaperDetail = () => {
       return;
     }
 
-    fetchPaper();
+    loadPaper();
   }, [id, isAuthenticated, navigate]);
 
   const handleCommentPosted = () => {

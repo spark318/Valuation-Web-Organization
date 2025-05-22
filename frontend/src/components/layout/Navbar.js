@@ -9,6 +9,7 @@ import {
   Container,
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -46,6 +47,14 @@ const Navbar = () => {
                   color="inherit"
                 >
                   Papers
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to="/upload-paper"
+                  color="inherit"
+                  startIcon={<CloudUploadIcon />}
+                >
+                  Upload Paper
                 </Button>
                 <Typography
                   variant="body1"

@@ -36,9 +36,13 @@ const Login = () => {
     setLoading(true);
 
     try {
+      console.log('Login successful, attempting navigation to /papers');
       await login(formData);
+      console.log('Navigation to /papers starting');
       navigate('/papers');
+      console.log('Navigation to /papers completed');
     } catch (err) {
+      console.error('Login failed:', err);
       setError(err.message || 'Failed to login. Please check your credentials.');
     } finally {
       setLoading(false);
@@ -48,7 +52,7 @@ const Login = () => {
   return (
     <Container maxWidth="sm" sx={{ mt: 8 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" component="h1" align="center" gutterBottom>
+        <Typography variant="h4" component="h1" gutterBottom align="center">
           Login
         </Typography>
 
@@ -58,7 +62,7 @@ const Login = () => {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <Box component="form" onSubmit={handleSubmit} noValidate>
           <TextField
             margin="normal"
             required
@@ -97,7 +101,7 @@ const Login = () => {
               {"Don't have an account? Sign Up"}
             </Link>
           </Box>
-        </form>
+        </Box>
       </Paper>
     </Container>
   );

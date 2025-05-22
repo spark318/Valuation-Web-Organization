@@ -13,34 +13,57 @@ import {
 } from '@mui/material';
 import { fetchPapers } from '../../services/paperService';
 import { format } from 'date-fns';
+import { useAuth } from '../../context/AuthContext';
 
 const PaperList = () => {
+  console.log('PaperList component rendering');
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const { isAuthenticated } = useAuth();
+
+  console.log('Current auth state:', { isAuthenticated });
 
   useEffect(() => {
+    console.log('PaperList useEffect triggered');
     const loadPapers = async () => {
       try {
-        setLoading(true);
+        console.log('Starting to fetch papers...');
         const data = await fetchPapers();
+        console.log('Papers data received:', data);
         setPapers(data);
-        setError(null);
+        setError('');
       } catch (err) {
-        setError(err.message || 'Failed to load papers');
+        console.error('Error in loadPapers:', err);
+        setError(err.message || 'Failed to fetch papers');
       } finally {
         setLoading(false);
       }
     };
 
-    loadPapers();
-  }, []);
+    if (isAuthenticated) {
+      console.log('User is authenticated, loading papers');
+      loadPapers();
+    } else {
+      console.log('User is not authenticated, skipping paper load');
+    }
+  }, [isAuthenticated]);
+
+  console.log('Current component state:', { loading, error, papersCount: papers.length });
+
+  if (!isAuthenticated) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Alert severity="info">Please log in to view papers</Alert>
+      </Container>
+    );
+  }
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+      <Container maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
-      </Box>
+      </Container>
     );
   }
 
@@ -59,7 +82,7 @@ const PaperList = () => {
       </Typography>
       
       {papers.length === 0 ? (
-        <Alert severity="info">No papers available.</Alert>
+        <Alert severity="info">No papers available</Alert>
       ) : (
         <Paper elevation={2}>
           <List>
@@ -69,30 +92,16 @@ const PaperList = () => {
                 component={Link}
                 to={`/papers/${paper.id}`}
                 sx={{
-                  borderBottom: '1px solid #eee',
-                  '&:last-child': {
-                    borderBottom: 'none',
-                  },
+                  textDecoration: 'none',
+                  color: 'inherit',
                   '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                    backgroundColor: 'action.hover',
                   },
                 }}
               >
                 <ListItemText
-                  primary={
-                    <Typography variant="h6" component="div">
-                      {paper.title}
-                    </Typography>
-                  }
-                  secondary={
-                    <>
-                      <Typography component="span" variant="body2" color="text.primary">
-                        {paper.author_username || 'Anonymous'}
-                      </Typography>
-                      {' — '}
-                      {format(new Date(paper.uploaded_at), 'MMM d, yyyy')}
-                    </>
-                  }
+                  primary={paper.title}
+                  secondary={`Author: ${paper.author_username}`}
                 />
               </ListItem>
             ))}

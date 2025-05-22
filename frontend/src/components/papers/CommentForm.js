@@ -7,7 +7,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
-import axios from 'axios';
+import { createComment } from '../../services/commentService';
 
 const CommentForm = ({ paperId, onCommentPosted }) => {
   const { isAuthenticated } = useAuth();
@@ -23,21 +23,11 @@ const CommentForm = ({ paperId, onCommentPosted }) => {
     setError('');
 
     try {
-      const token = localStorage.getItem('accessToken');
-      await axios.post(
-        `/api/papers/${paperId}/comments/`,
-        { content: content.trim() },
-        {
-          headers: {
-            'Authorization': `JWT ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      await createComment(paperId, content.trim());
       setContent('');
       onCommentPosted();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to post comment');
+      setError(err.message || 'Failed to post comment');
     } finally {
       setLoading(false);
     }
@@ -52,30 +42,26 @@ const CommentForm = ({ paperId, onCommentPosted }) => {
   }
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
+    <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
       <TextField
         fullWidth
         multiline
         rows={3}
-        variant="outlined"
-        label="Write a comment"
         value={content}
         onChange={(e) => setContent(e.target.value)}
+        placeholder="Write your comment..."
         disabled={loading}
         sx={{ mb: 2 }}
       />
-      
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-
       <Button
         type="submit"
         variant="contained"
         disabled={loading || !content.trim()}
-        sx={{ minWidth: 120 }}
       >
         {loading ? (
           <>

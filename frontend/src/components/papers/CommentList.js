@@ -9,23 +9,18 @@ import {
   Box,
   Divider,
 } from '@mui/material';
-import axios from 'axios';
 import { format } from 'date-fns';
+import { fetchComments } from '../../services/commentService';
 
 const CommentList = ({ paperId }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchComments = async () => {
+  const loadComments = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await axios.get(`/api/papers/${paperId}/comments/`, {
-        headers: {
-          'Authorization': `JWT ${token}`
-        }
-      });
-      setComments(response.data);
+      const data = await fetchComments(paperId);
+      setComments(data);
       setError('');
     } catch (err) {
       setError('Failed to load comments');
@@ -35,7 +30,7 @@ const CommentList = ({ paperId }) => {
   };
 
   useEffect(() => {
-    fetchComments();
+    loadComments();
   }, [paperId]);
 
   if (loading) {

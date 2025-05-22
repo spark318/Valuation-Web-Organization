@@ -11,19 +11,25 @@ import PaperUploadForm from './components/papers/PaperUploadForm';
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  
+  console.log('ProtectedRoute rendering:', { isAuthenticated, isLoading });
 
   if (isLoading) {
+    console.log('ProtectedRoute: Still loading auth state');
     return <div>Loading...</div>;
   }
 
   if (!isAuthenticated) {
+    console.log('ProtectedRoute: User not authenticated, redirecting to login');
     return <Navigate to="/login" />;
   }
 
+  console.log('ProtectedRoute: User authenticated, rendering protected content');
   return children;
 };
 
 function App() {
+  console.log('App component rendering');
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
@@ -35,11 +41,21 @@ function App() {
             <Route path="/register" element={<Register />} />
             
             {/* Protected routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/papers" element={<PaperList />} />
-              <Route path="/papers/:id" element={<PaperDetail />} />
-              <Route path="/upload-paper" element={<PaperUploadForm />} />
-            </Route>
+            <Route path="/papers" element={
+              <ProtectedRoute>
+                <PaperList />
+              </ProtectedRoute>
+            } />
+            <Route path="/papers/:id" element={
+              <ProtectedRoute>
+                <PaperDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/upload-paper" element={
+              <ProtectedRoute>
+                <PaperUploadForm />
+              </ProtectedRoute>
+            } />
 
             {/* Redirect root to login if not authenticated */}
             <Route path="/" element={<Navigate to="/login" />} />
