@@ -10,14 +10,18 @@ import {
   Alert,
   Box,
   Divider,
+  Snackbar,
+  IconButton,
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import DescriptionIcon from '@mui/icons-material/Description';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import ReportIcon from '@mui/icons-material/Report';
+import CloseIcon from '@mui/icons-material/Close';
 import CommentList from './CommentList';
 import CommentForm from './CommentForm';
-import { fetchPaperById } from '../../services/paperService';
+import { fetchPaperById, reportPaper } from '../../services/paperService';
 
 const PaperDetail = () => {
   const { id } = useParams();
@@ -26,7 +30,10 @@ const PaperDetail = () => {
   const [paper, setPaper] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [commentKey, setCommentKey] = useState(0); // For forcing CommentList refresh
+  const [commentKey, setCommentKey] = useState(0);
+  const [reporting, setReporting] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [reportError, setReportError] = useState('');
 
   useEffect(() => {
     const loadPaper = async () => {
@@ -50,7 +57,35 @@ const PaperDetail = () => {
   }, [id, isAuthenticated, navigate]);
 
   const handleCommentPosted = () => {
-    setCommentKey(prev => prev + 1); // Force CommentList to refresh
+    setCommentKey(prev => prev + 1);
+  };
+
+  const handleReport = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    setReporting(true);
+    setReportError('');
+    try {
+      await reportPaper(id);
+      setReportSuccess(true);
+      // Refresh paper data to reflect the hidden status
+      const updatedPaper = await fetchPaperById(id);
+      setPaper(updatedPaper);
+    } catch (err) {
+      setReportError(err.message || 'Failed to report paper');
+    } finally {
+      setReporting(false);
+    }
+  };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setReportSuccess(false);
   };
 
   if (!isAuthenticated) {
@@ -119,7 +154,7 @@ const PaperDetail = () => {
             {paper.summary}
           </Typography>
 
-          <Box sx={{ mt: 3 }}>
+          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
             <Button
               variant="contained"
               startIcon={<DescriptionIcon />}
@@ -128,6 +163,15 @@ const PaperDetail = () => {
               rel="noopener noreferrer"
             >
               View PDF
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<ReportIcon />}
+              onClick={handleReport}
+              disabled={reporting || paper.is_hidden}
+            >
+              {reporting ? 'Reporting...' : 'Report Paper'}
             </Button>
           </Box>
 
@@ -141,6 +185,33 @@ const PaperDetail = () => {
           <CommentList key={commentKey} paperId={id} />
         </CardContent>
       </Card>
+
+      <Snackbar
+        open={reportSuccess}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        message="Paper reported successfully"
+        action={
+          <IconButton
+            size="small"
+            aria-label="close"
+            color="inherit"
+            onClick={handleCloseSnackbar}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        }
+      />
+
+      {reportError && (
+        <Alert 
+          severity="error" 
+          sx={{ mt: 2 }}
+          onClose={() => setReportError('')}
+        >
+          {reportError}
+        </Alert>
+      )}
     </Container>
   );
 };
