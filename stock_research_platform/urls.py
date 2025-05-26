@@ -29,7 +29,9 @@ urlpatterns = [
     path('auth/', include('djoser.urls.jwt')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/', include('papers.urls')),  # Include papers URLs with api/ prefix
+    path("api/users/", include("users.urls", namespace="users")),
+    path("api/papers/", include("papers.urls", namespace="papers")),
+    path("api/stocks/", include("stocks.urls", namespace="stocks")),
 ]
 
 if settings.DEBUG:

@@ -49,7 +49,7 @@ const PaperList = () => {
     }
   }, [isAuthenticated]);
 
-  console.log('Current component state:', { loading, error, papersCount: papers.length });
+  console.log('Current component state:', { loading, error, papersCount: Array.isArray(papers) ? papers.length : 0 });
 
   if (!isAuthenticated) {
     return (
@@ -81,7 +81,7 @@ const PaperList = () => {
         Research Papers
       </Typography>
       
-      {papers.length === 0 ? (
+      {(!Array.isArray(papers) || papers.length === 0) ? (
         <Alert severity="info">No papers available</Alert>
       ) : (
         <Paper elevation={2}>
