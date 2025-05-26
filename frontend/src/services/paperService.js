@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getAuthHeader } from './api';
+import apiClient from './apiClient';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -24,7 +25,7 @@ export const testPostRequest = async () => {
 
 export const fetchPapers = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/papers/list/`);
+    const response = await apiClient.get('/papers/');
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.error || 'Failed to fetch papers');
@@ -33,7 +34,7 @@ export const fetchPapers = async () => {
 
 export const fetchPaperById = async (id) => {
   try {
-    const response = await axios.get(`${API_URL}/api/papers/detail/${id}/`);
+    const response = await apiClient.get(`/papers/${id}/`);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.error || 'Failed to fetch paper details');
@@ -42,9 +43,8 @@ export const fetchPaperById = async (id) => {
 
 export const uploadPaper = async (formData) => {
   try {
-    const response = await axios.post(`${API_URL}/api/papers/upload/`, formData, {
+    const response = await apiClient.post('/papers/', formData, {
       headers: {
-        ...getAuthHeader(),
         'Content-Type': 'multipart/form-data',
       },
     });
@@ -56,9 +56,7 @@ export const uploadPaper = async (formData) => {
 
 export const reportPaper = async (paperId) => {
   try {
-    const response = await axios.post(`${API_URL}/api/papers/${paperId}/report/`, {}, {
-      headers: getAuthHeader(),
-    });
+    const response = await apiClient.post(`/papers/${paperId}/report/`, {});
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.error || 'Failed to report paper');

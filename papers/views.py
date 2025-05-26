@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import Paper, Comment
@@ -9,77 +9,6 @@ from .serializers import PaperSerializer, CommentSerializer
 import logging
 
 logger = logging.getLogger(__name__)
-
-# Test endpoint to debug POST requests
-@api_view(['GET', 'POST'])
-@permission_classes([])  # Allow any user
-def test_post_endpoint(request):
-    """Simple test endpoint to debug POST requests"""
-    if request.method == 'GET':
-        return Response({'message': 'GET request successful', 'method': 'GET'})
-    elif request.method == 'POST':
-        return Response({
-            'message': 'POST request successful', 
-            'method': 'POST',
-            'data': request.data,
-            'content_type': request.content_type
-        })
-
-# Simple paper upload function for testing
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def simple_paper_upload(request):
-    """Simple paper upload function to test if ModelViewSet is the issue"""
-    try:
-        serializer = PaperSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(author=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# Simple function to list papers
-@api_view(['GET'])
-@permission_classes([])  # Allow any user to read
-def simple_paper_list(request):
-    """Simple function to list papers"""
-    logger.info("Executing simple_paper_list - Full Version")
-    print("Executing simple_paper_list - Full Version")
-    try:
-        if request.user.is_authenticated and request.user.is_superuser:
-            papers = Paper.objects.all()
-            logger.info(f"Superuser {request.user.username} fetching all papers. Found {papers.count()} papers")
-        else:
-            papers = Paper.objects.filter(is_hidden=False)
-            logger.info(f"User fetching non-hidden papers. Found {papers.count()} papers")
-        
-        serializer = PaperSerializer(papers, many=True)
-        return Response(serializer.data)
-    except Exception as e:
-        logger.error(f"Error in simple_paper_list: {str(e)}")
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# Simple function to retrieve a single paper by ID
-@api_view(['GET'])
-@permission_classes([]) # Allow any user to read
-def simple_paper_detail(request, paper_id):
-    """Simple function to retrieve a single paper by ID"""
-    try:
-        paper = Paper.objects.get(pk=paper_id)
-        
-        # Check if paper is hidden and user is not superuser
-        if paper.is_hidden and not (request.user.is_authenticated and request.user.is_superuser):
-            return Response({'error': 'Paper not found or access denied'}, status=status.HTTP_404_NOT_FOUND)
-            
-        serializer = PaperSerializer(paper)
-        return Response(serializer.data)
-    except Paper.DoesNotExist:
-        return Response({'error': 'Paper not found'}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        logger.error(f"Error in simple_paper_detail for ID {paper_id}: {str(e)}")
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Create your views here.
 class PaperViewSet(viewsets.ModelViewSet):

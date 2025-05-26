@@ -1,23 +1,6 @@
-import axios from 'axios';
+import apiClient from './apiClient'; // Import the centralized apiClient
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add token to requests if available
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `JWT ${token}`;
-  }
-  return config;
-});
+// Previous API_BASE_URL and local apiClient definition and interceptors are removed.
 
 export const stockService = {
   // Get all stocks
