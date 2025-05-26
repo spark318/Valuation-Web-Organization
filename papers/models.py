@@ -27,6 +27,13 @@ class Paper(models.Model):
     def __str__(self):
         return self.title
 
+    def delete(self, *args, **kwargs):
+        # Delete the S3 file first
+        if self.pdf_file:
+            self.pdf_file.delete(save=False) # save=False to prevent saving the model again before deletion
+        # Call the superclass method to delete the database record
+        super().delete(*args, **kwargs)
+
 class Comment(models.Model):
     paper = models.ForeignKey(Paper, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comments')

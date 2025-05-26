@@ -80,6 +80,8 @@ export const AuthProvider = ({ children }) => {
       } catch (error) {
         console.error('Failed to fetch user profile:', error);
         setAuthToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
       }
     } else {
       console.log('No existing token found');
