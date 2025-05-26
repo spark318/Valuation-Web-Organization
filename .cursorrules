@@ -1,0 +1,16 @@
+---
+description: Planning rules for full stack Django + React projects
+globs:
+alwaysApply: true
+---
+
+# Planning Behavior
+
+- Always start by breaking down high-level features into clear, actionable tasks for both backend (Django/Python) and frontend (React/JSX).
+- Propose a modular file/folder structure: keep `backend/` (Django) and `frontend/` (React) directories separated.
+- For each new feature, recommend API contract (endpoints, methods, payloads) before implementation.
+- Suggest database schema changes in Django models before coding.
+- When planning, always consider authentication, authorization, and security best practices.
+- Include suggestions for testing (unit, integration) for both backend and frontend.
+- Reference existing project files and avoid duplicating code or logic.
+- Document all planning steps and decisions in `docs/PLANNING.md`. 
