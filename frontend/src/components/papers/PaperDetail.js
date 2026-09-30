@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Container,
   Card,
@@ -134,7 +134,8 @@ const PaperDetail = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, color: 'text.secondary' }}>
             <PersonIcon sx={{ mr: 1 }} />
             <Typography variant="body2">
-              Author: {paper.author_username}
+              Author:{' '}
+              <RouterLink to={`/users/${paper.author}`}>{paper.author_username}</RouterLink>
             </Typography>
           </Box>
 

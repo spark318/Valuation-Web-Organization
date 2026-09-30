@@ -1,20 +1,11 @@
 from django.db import models
 from django.conf import settings
-# Import S3Boto3Storage and instantiate it
-from storages.backends.s3boto3 import S3Boto3Storage
-
-# Define the S3 storage instance to be used for specific fields
-# This instance will use the AWS settings from your settings.py
-s3_media_storage = S3Boto3Storage()
 
 class Paper(models.Model):
     title = models.CharField(max_length=255)
     summary = models.TextField()
-    # Explicitly use the S3 storage instance for this field
-    pdf_file = models.FileField(
-        upload_to='research_papers/pdfs/', 
-        storage=s3_media_storage  # Use the S3 instance
-    )
+    # Uses the default storage: S3 when configured, local media/ otherwise (see settings.py)
+    pdf_file = models.FileField(upload_to='research_papers/pdfs/')
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -28,10 +19,9 @@ class Paper(models.Model):
         return self.title
 
     def delete(self, *args, **kwargs):
-        # Delete the S3 file first
+        # Remove the stored file too, so deleted papers don't leave orphaned PDFs behind
         if self.pdf_file:
-            self.pdf_file.delete(save=False) # save=False to prevent saving the model again before deletion
-        # Call the superclass method to delete the database record
+            self.pdf_file.delete(save=False)
         super().delete(*args, **kwargs)
 
 class Comment(models.Model):

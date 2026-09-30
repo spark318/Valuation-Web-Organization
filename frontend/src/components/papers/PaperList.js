@@ -9,28 +9,20 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  Box,
 } from '@mui/material';
 import { fetchPapers } from '../../services/paperService';
-import { format } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
 
 const PaperList = () => {
-  console.log('PaperList component rendering');
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { isAuthenticated } = useAuth();
 
-  console.log('Current auth state:', { isAuthenticated });
-
   useEffect(() => {
-    console.log('PaperList useEffect triggered');
     const loadPapers = async () => {
       try {
-        console.log('Starting to fetch papers...');
         const data = await fetchPapers();
-        console.log('Papers data received:', data);
         setPapers(data);
         setError('');
       } catch (err) {
@@ -42,14 +34,9 @@ const PaperList = () => {
     };
 
     if (isAuthenticated) {
-      console.log('User is authenticated, loading papers');
       loadPapers();
-    } else {
-      console.log('User is not authenticated, skipping paper load');
     }
   }, [isAuthenticated]);
-
-  console.log('Current component state:', { loading, error, papersCount: Array.isArray(papers) ? papers.length : 0 });
 
   if (!isAuthenticated) {
     return (

@@ -35,6 +35,14 @@ class UserSerializer(BaseUserSerializer):
             return request.user.is_following(obj)
         return False
 
+    def to_representation(self, obj):
+        # Email addresses are private: only show a user their own.
+        data = super().to_representation(obj)
+        request = self.context.get('request')
+        if not (request and request.user == obj):
+            data.pop('email', None)
+        return data
+
 class UserProfileSerializer(serializers.ModelSerializer):
     """Detailed user profile serializer"""
     followers_count = serializers.SerializerMethodField()

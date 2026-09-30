@@ -1,27 +1,4 @@
-import axios from 'axios';
-import { getAuthHeader } from './api';
 import apiClient from './apiClient';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-
-// Test function for debugging POST requests
-export const testPostRequest = async () => {
-  try {
-    const response = await axios.post(`${API_URL}/api/papers/test-post-debug/`, {
-      test: 'data',
-      message: 'Testing POST request'
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    console.log('Test POST successful:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Test POST failed:', error);
-    throw new Error(error.response?.data?.error || 'Test POST failed');
-  }
-};
 
 export const fetchPapers = async () => {
   try {

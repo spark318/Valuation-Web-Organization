@@ -8,18 +8,11 @@ import {
   Tab,
   Card,
   CardContent,
-  Chip,
-  IconButton,
   Button,
   CircularProgress,
   Alert,
 } from '@mui/material';
 import {
-  Star,
-  TrendingUp,
-  TrendingDown,
-  Edit,
-  Delete,
   Add,
 } from '@mui/icons-material';
 import StockCard from './StockCard';

@@ -27,64 +27,49 @@ class UserDetailView(generics.RetrieveAPIView):
 @permission_classes([IsAuthenticated])
 def follow_user(request, user_id):
     """Follow a user"""
-    try:
-        user_to_follow = get_object_or_404(User, id=user_id)
-        
-        if user_to_follow == request.user:
-            return Response(
-                {'error': 'You cannot follow yourself'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        follow, created = Follow.objects.get_or_create(
-            follower=request.user,
-            followed=user_to_follow
-        )
-        
-        if created:
-            return Response(
-                {'message': f'Successfully followed {user_to_follow.username}'}, 
-                status=status.HTTP_201_CREATED
-            )
-        else:
-            return Response(
-                {'message': f'Already following {user_to_follow.username}'}, 
-                status=status.HTTP_200_OK
-            )
-    except Exception as e:
+    user_to_follow = get_object_or_404(User, id=user_id)
+
+    if user_to_follow == request.user:
         return Response(
-            {'error': str(e)}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {'error': 'You cannot follow yourself'},
+            status=status.HTTP_400_BAD_REQUEST
         )
+
+    _, created = Follow.objects.get_or_create(
+        follower=request.user,
+        followed=user_to_follow
+    )
+
+    if created:
+        return Response(
+            {'message': f'Successfully followed {user_to_follow.username}'},
+            status=status.HTTP_201_CREATED
+        )
+    return Response(
+        {'message': f'Already following {user_to_follow.username}'},
+        status=status.HTTP_200_OK
+    )
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def unfollow_user(request, user_id):
     """Unfollow a user"""
-    try:
-        user_to_unfollow = get_object_or_404(User, id=user_id)
-        
-        follow = Follow.objects.filter(
-            follower=request.user,
-            followed=user_to_unfollow
-        ).first()
-        
-        if follow:
-            follow.delete()
-            return Response(
-                {'message': f'Successfully unfollowed {user_to_unfollow.username}'}, 
-                status=status.HTTP_200_OK
-            )
-        else:
-            return Response(
-                {'message': f'Not following {user_to_unfollow.username}'}, 
-                status=status.HTTP_200_OK
-            )
-    except Exception as e:
+    user_to_unfollow = get_object_or_404(User, id=user_id)
+
+    deleted, _ = Follow.objects.filter(
+        follower=request.user,
+        followed=user_to_unfollow
+    ).delete()
+
+    if deleted:
         return Response(
-            {'error': str(e)}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {'message': f'Successfully unfollowed {user_to_unfollow.username}'},
+            status=status.HTTP_200_OK
         )
+    return Response(
+        {'message': f'Not following {user_to_unfollow.username}'},
+        status=status.HTTP_200_OK
+    )
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

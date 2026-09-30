@@ -36,14 +36,10 @@ const Login = () => {
     setLoading(true);
 
     try {
-      console.log('Login successful, attempting navigation to /papers');
       await login(formData);
-      console.log('Navigation to /papers starting');
       navigate('/papers');
-      console.log('Navigation to /papers completed');
     } catch (err) {
-      console.error('Login failed:', err);
-      setError(err.message || 'Failed to login. Please check your credentials.');
+      setError(err.detail || err.message || 'Failed to login. Please check your credentials.');
     } finally {
       setLoading(false);
     }

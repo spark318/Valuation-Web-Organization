@@ -1,6 +1,11 @@
 from rest_framework import serializers
 from .models import Stock, UserStock, StockAlert
-from users.serializers import UserSerializer
+
+
+def validate_existing_stock_id(value):
+    if not Stock.objects.filter(id=value).exists():
+        raise serializers.ValidationError('Stock not found.')
+    return value
 
 class StockSerializer(serializers.ModelSerializer):
     interested_users_count = serializers.SerializerMethodField()
@@ -25,7 +30,7 @@ class StockSerializer(serializers.ModelSerializer):
 
 class UserStockSerializer(serializers.ModelSerializer):
     stock = StockSerializer(read_only=True)
-    stock_id = serializers.IntegerField(write_only=True)
+    stock_id = serializers.IntegerField(write_only=True, validators=[validate_existing_stock_id])
     
     class Meta:
         model = UserStock
@@ -48,7 +53,7 @@ class UserStockCreateSerializer(serializers.ModelSerializer):
 
 class StockAlertSerializer(serializers.ModelSerializer):
     stock = StockSerializer(read_only=True)
-    stock_id = serializers.IntegerField(write_only=True)
+    stock_id = serializers.IntegerField(write_only=True, validators=[validate_existing_stock_id])
     
     class Meta:
         model = StockAlert

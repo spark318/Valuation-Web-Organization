@@ -1,10 +1,9 @@
-from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from django.db import IntegrityError
+from django.db.models import Q
 from .models import Stock, UserStock, StockAlert
 from .serializers import (
     StockSerializer, UserStockSerializer, UserStockCreateSerializer,
@@ -38,12 +37,8 @@ def search_stocks(request):
         return Response({'error': 'Query cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
     
     stocks = Stock.objects.filter(
-        ticker__icontains=query
-    ) | Stock.objects.filter(
-        company_name__icontains=query
-    )
-    
-    stocks = stocks[:20]  # Limit to 20 results
+        Q(ticker__icontains=query) | Q(company_name__icontains=query)
+    )[:20]  # Limit to 20 results
     serializer = StockSerializer(stocks, many=True, context={'request': request})
     return Response(serializer.data)
 
@@ -72,60 +67,37 @@ class UserStockDetailView(generics.RetrieveUpdateDestroyAPIView):
 @permission_classes([IsAuthenticated])
 def add_stock_interest(request, stock_id):
     """Add a stock to user's interested stocks"""
-    try:
-        stock = get_object_or_404(Stock, id=stock_id)
-        
-        user_stock, created = UserStock.objects.get_or_create(
-            user=request.user,
-            stock=stock,
-            defaults={
-                'notes': request.data.get('notes', ''),
-                'target_price': request.data.get('target_price'),
-                'watchlist_priority': request.data.get('watchlist_priority', 1)
-            }
-        )
-        
-        if created:
-            serializer = UserStockSerializer(user_stock, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(
-                {'message': 'Stock already in your watchlist'}, 
-                status=status.HTTP_200_OK
-            )
-    except Exception as e:
+    stock = get_object_or_404(Stock, id=stock_id)
+    if UserStock.objects.filter(user=request.user, stock=stock).exists():
         return Response(
-            {'error': str(e)}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {'message': 'Stock already in your watchlist'},
+            status=status.HTTP_200_OK
         )
+
+    # Validate the optional fields through the serializer instead of trusting raw input.
+    optional_fields = ('notes', 'target_price', 'watchlist_priority')
+    data = {field: request.data[field] for field in optional_fields if field in request.data}
+    serializer = UserStockSerializer(data={**data, 'stock_id': stock.id}, context={'request': request})
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def remove_stock_interest(request, stock_id):
     """Remove a stock from user's interested stocks"""
-    try:
-        stock = get_object_or_404(Stock, id=stock_id)
-        user_stock = UserStock.objects.filter(
-            user=request.user,
-            stock=stock
-        ).first()
-        
-        if user_stock:
-            user_stock.delete()
-            return Response(
-                {'message': 'Stock removed from watchlist'}, 
-                status=status.HTTP_200_OK
-            )
-        else:
-            return Response(
-                {'message': 'Stock not in your watchlist'}, 
-                status=status.HTTP_200_OK
-            )
-    except Exception as e:
+    stock = get_object_or_404(Stock, id=stock_id)
+    deleted, _ = UserStock.objects.filter(user=request.user, stock=stock).delete()
+
+    if deleted:
         return Response(
-            {'error': str(e)}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {'message': 'Stock removed from watchlist'},
+            status=status.HTTP_200_OK
         )
+    return Response(
+        {'message': 'Stock not in your watchlist'},
+        status=status.HTTP_200_OK
+    )
 
 class StockAlertListView(generics.ListCreateAPIView):
     """List user's stock alerts and create new ones"""

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   TextField,
   Autocomplete,
@@ -17,8 +17,9 @@ const StockSearch = ({ onSelectStock, placeholder = "Search stocks...", fullWidt
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
 
-  const debouncedSearch = useCallback(
-    debounce(async (searchTerm) => {
+  // Debounce so typing "AAPL" sends one request instead of four.
+  const debouncedSearch = useMemo(
+    () => debounce(async (searchTerm) => {
       if (searchTerm.length < 1) {
         setOptions([]);
         return;
@@ -42,6 +43,8 @@ const StockSearch = ({ onSelectStock, placeholder = "Search stocks...", fullWidt
     debouncedSearch(inputValue);
   }, [inputValue, debouncedSearch]);
 
+  useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -50,10 +53,11 @@ const StockSearch = ({ onSelectStock, placeholder = "Search stocks...", fullWidt
   };
 
   const renderOption = (props, option) => {
+    const { key, ...optionProps } = props;
     const isPositiveChange = option.price_change_percent >= 0;
     
     return (
-      <Box component="li" {...props}>
+      <Box component="li" key={key} {...optionProps}>
         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
           <Box sx={{ flex: 1 }}>
             <Typography variant="subtitle1" fontWeight="bold">

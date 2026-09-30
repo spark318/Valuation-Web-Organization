@@ -1,4 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Django
 db.sqlite3
 *.sqlite3
+media/
+staticfiles/
+datadump.json
+
+# Secrets
 .env
-.venv/
+.env.*
+!.env.example
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

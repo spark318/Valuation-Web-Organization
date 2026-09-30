@@ -1,54 +1,34 @@
-import axios from 'axios';
+import apiClient, { tokenStore } from './apiClient';
 
-const API_URL = 'http://localhost:8000';
+// Normalize axios errors to the response body (e.g. DRF field errors) when there is one.
+const unwrap = (error) => error.response?.data || error.message;
 
-// Get the current auth token
-export const getAuthHeader = () => {
-  const token = localStorage.getItem('accessToken');
-  return token ? { 'Authorization': `JWT ${token}` } : {};
-};
-
-// Set the auth token in localStorage and axios defaults
-export const setAuthToken = (token) => {
-  if (token) {
-    localStorage.setItem('accessToken', token);
-    axios.defaults.headers.common['Authorization'] = `JWT ${token}`;
-  } else {
-    localStorage.removeItem('accessToken');
-    delete axios.defaults.headers.common['Authorization'];
-  }
-};
-
-// Login user
 export const loginUser = async (credentials) => {
   try {
-    const response = await axios.post(`${API_URL}/api/token/`, credentials);
-    const { access, refresh } = response.data;
-    setAuthToken(access);
-    return response.data;
+    const { data } = await apiClient.post('/token/', credentials);
+    tokenStore.set(data.access, data.refresh);
+    return data;
   } catch (error) {
-    throw error.response?.data || error.message;
+    throw unwrap(error);
   }
 };
 
-// Register user
 export const registerUser = async (userData) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/users/`, userData);
-    return response.data;
+    const { data } = await apiClient.post('/auth/users/', userData);
+    return data;
   } catch (error) {
-    throw error.response?.data || error.message;
+    throw unwrap(error);
   }
 };
 
-// Fetch user profile
 export const fetchUserProfile = async () => {
   try {
-    const response = await axios.get(`${API_URL}/auth/users/me/`, {
-      headers: getAuthHeader()
-    });
-    return response.data;
+    const { data } = await apiClient.get('/auth/users/me/');
+    return data;
   } catch (error) {
-    throw error.response?.data || error.message;
+    throw unwrap(error);
   }
 };
+
+export const logoutUser = () => tokenStore.clear();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   List,
   ListItem,
@@ -17,7 +17,7 @@ const CommentList = ({ paperId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     try {
       const data = await fetchComments(paperId);
       setComments(data);
@@ -27,11 +27,11 @@ const CommentList = ({ paperId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [paperId]);
 
   useEffect(() => {
     loadComments();
-  }, [paperId]);
+  }, [loadComments]);
 
   if (loading) {
     return (

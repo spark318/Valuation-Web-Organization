@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -35,7 +36,7 @@ const Navbar = () => {
               fontWeight: 'bold',
             }}
           >
-            Stock Research
+            Valuation Hub
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 2 }}>
@@ -50,18 +51,28 @@ const Navbar = () => {
                 </Button>
                 <Button
                   component={RouterLink}
+                  to="/watchlist"
+                  color="inherit"
+                  startIcon={<ShowChartIcon />}
+                >
+                  Watchlist
+                </Button>
+                <Button
+                  component={RouterLink}
                   to="/upload-paper"
                   color="inherit"
                   startIcon={<CloudUploadIcon />}
                 >
                   Upload Paper
                 </Button>
-                <Typography
-                  variant="body1"
-                  sx={{ display: 'flex', alignItems: 'center' }}
+                <Button
+                  component={RouterLink}
+                  to={`/users/${user?.id}`}
+                  color="inherit"
+                  sx={{ textTransform: 'none', fontWeight: 'bold' }}
                 >
                   {user?.username}
-                </Typography>
+                </Button>
                 <Button
                   color="inherit"
                   onClick={handleLogout}

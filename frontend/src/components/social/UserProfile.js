@@ -5,7 +5,6 @@ import {
   Typography,
   Avatar,
   Box,
-  Chip,
   IconButton,
   Link,
   Grid,
@@ -28,21 +27,13 @@ const UserProfile = ({ userId, isCurrentUser = false, onEdit }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchUser();
+    setLoading(true);
+    setError(null);
+    userService.getUserDetails(userId)
+      .then((response) => setUser(response.data))
+      .catch(() => setError('Failed to load user profile'))
+      .finally(() => setLoading(false));
   }, [userId]);
-
-  const fetchUser = async () => {
-    try {
-      setLoading(true);
-      const response = await userService.getUserDetails(userId);
-      setUser(response.data);
-    } catch (err) {
-      setError('Failed to load user profile');
-      console.error('Error fetching user:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleFollowChange = (isFollowing) => {
     setUser(prev => ({

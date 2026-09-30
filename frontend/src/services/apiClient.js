@@ -1,73 +1,68 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
-// Create axios instance with default config
+const ACCESS_KEY = 'accessToken';
+const REFRESH_KEY = 'refreshToken';
+
+export const tokenStore = {
+  getAccess: () => localStorage.getItem(ACCESS_KEY),
+  getRefresh: () => localStorage.getItem(REFRESH_KEY),
+  set: (access, refresh) => {
+    localStorage.setItem(ACCESS_KEY, access);
+    if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
+  },
+  clear: () => {
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+  },
+};
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Add token to requests if available
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
+  const token = tokenStore.getAccess();
   if (token) {
     config.headers.Authorization = `JWT ${token}`;
   }
-  // console.log('Requesting URL:', config.baseURL + config.url); // Removed debugging log
   return config;
 });
 
-// Handle token refresh on 401 errors
+const redirectToLogin = () => {
+  tokenStore.clear();
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+};
+
+// Access tokens expire after an hour. On a 401, trade the refresh token for a new access
+// token once and replay the request; if that fails, the session is over.
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        try {
-          // Use a temporary, clean axios instance for the refresh token request
-          // to avoid circular dependency or issues with the interceptor itself.
-          const refreshResponse = await axios.post(`${API_BASE_URL}/auth/jwt/refresh/`, {
-            refresh: refreshToken,
-          });
-          const newToken = refreshResponse.data.access;
-          localStorage.setItem('accessToken', newToken);
-          
-          // Retry the original request with the new token
-          error.config.headers.Authorization = `JWT ${newToken}`;
-          return apiClient.request(error.config); // Use the original apiClient to retry
-        } catch (refreshError) {
-          // Refresh failed, redirect to login
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          console.error("Session expired or refresh token invalid. Redirecting to login.", refreshError);
-          // Prevent further actions if already redirecting or in a non-browser env
-          if (typeof window !== 'undefined' && window.location) {
-            // To avoid redirect loops if /login itself causes a 401
-            if (window.location.pathname !== '/login') {
-                 window.location.href = '/login';
-            }
-          }
-          return Promise.reject(refreshError); // Important to reject the promise
-        }
-      } else {
-        // No refresh token, redirect to login
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        console.error("No refresh token found. Redirecting to login.");
-        if (typeof window !== 'undefined' && window.location) {
-            if (window.location.pathname !== '/login') {
-                 window.location.href = '/login';
-            }
-        }
-        return Promise.reject(error); // Reject the original error
-      }
+    const original = error.config;
+    if (error.response?.status !== 401 || original._retried) {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+    const refresh = tokenStore.getRefresh();
+    if (!refresh) {
+      if (tokenStore.getAccess()) redirectToLogin();
+      return Promise.reject(error);
+    }
+    try {
+      original._retried = true;
+      const { data } = await axios.post(`${API_BASE_URL}/token/refresh/`, { refresh });
+      tokenStore.set(data.access);
+      original.headers.Authorization = `JWT ${data.access}`;
+      return apiClient.request(original);
+    } catch (refreshError) {
+      redirectToLogin();
+      return Promise.reject(refreshError);
+    }
   }
 );
 
-export default apiClient; 
+export default apiClient;

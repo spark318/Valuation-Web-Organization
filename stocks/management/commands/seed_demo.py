@@ -1,20 +1,12 @@
-#!/usr/bin/env python
-"""
-Script to create sample stock data for testing the stock tracking system.
-Run this with: python manage.py shell < create_sample_stocks.py
-"""
-
-import os
-import django
-
-# Setup Django environment
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'stock_research_platform.settings')
-django.setup()
+"""Seed the database with sample stocks and demo accounts so the app can be explored locally."""
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 
 from stocks.models import Stock
+from users.models import Follow
 
-# Sample stock data
-sample_stocks = [
+# Static snapshot for demo purposes; prices are not live market data.
+SAMPLE_STOCKS = [
     {
         'ticker': 'AAPL',
         'company_name': 'Apple Inc.',
@@ -127,33 +119,36 @@ sample_stocks = [
     }
 ]
 
-def create_sample_stocks():
-    """Create sample stocks in the database"""
-    created_count = 0
-    updated_count = 0
-    
-    for stock_data in sample_stocks:
-        stock, created = Stock.objects.get_or_create(
-            ticker=stock_data['ticker'],
-            defaults=stock_data
-        )
-        
-        if created:
-            created_count += 1
-            print(f"Created stock: {stock.ticker} - {stock.company_name}")
-        else:
-            # Update existing stock with new data
-            for key, value in stock_data.items():
-                if key != 'ticker':  # Don't update ticker
-                    setattr(stock, key, value)
-            stock.save()
-            updated_count += 1
-            print(f"Updated stock: {stock.ticker} - {stock.company_name}")
-    
-    print(f"\nSample data creation complete!")
-    print(f"Created: {created_count} stocks")
-    print(f"Updated: {updated_count} stocks")
-    print(f"Total stocks in database: {Stock.objects.count()}")
+DEMO_USERS = [
+    ("demo", "demo@example.com"),
+    ("alice", "alice@example.com"),
+    ("bob", "bob@example.com"),
+]
+DEMO_PASSWORD = "demo-pass-123"
 
-if __name__ == "__main__":
-    create_sample_stocks() 
+
+class Command(BaseCommand):
+    help = "Create sample stocks and demo users (password: %s)." % DEMO_PASSWORD
+
+    def handle(self, *args, **options):
+        for stock_data in SAMPLE_STOCKS:
+            Stock.objects.update_or_create(ticker=stock_data["ticker"], defaults=stock_data)
+        self.stdout.write(f"Stocks: {Stock.objects.count()}")
+
+        User = get_user_model()
+        users = []
+        for username, email in DEMO_USERS:
+            user, created = User.objects.get_or_create(username=username, defaults={"email": email})
+            if created:
+                user.set_password(DEMO_PASSWORD)
+                user.save()
+            users.append(user)
+
+        demo, alice, bob = users
+        Follow.objects.get_or_create(follower=demo, followed=alice)
+        Follow.objects.get_or_create(follower=alice, followed=demo)
+        Follow.objects.get_or_create(follower=bob, followed=alice)
+
+        self.stdout.write(self.style.SUCCESS(
+            f"Demo users ready: {', '.join(u for u, _ in DEMO_USERS)} (password: {DEMO_PASSWORD})"
+        ))

@@ -19,30 +19,11 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# AWS S3 Storage Settings
-# Moved up to ensure it's set before other parts of Django might initialize storage
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'valuation-bucket')
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'ap-northeast-2')
-AWS_S3_FILE_OVERWRITE = False  # Don't overwrite files with the same name
-AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400', # Cache static assets for 1 day
-}
-AWS_LOCATION = 'media' # Store media files in a 'media/' subdirectory in your S3 bucket
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com' # For constructing file URLs
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "<removed>"
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+# Security: every secret comes from the environment (see .env.example).
+# The fallback key is only for local development and must never be used in production.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-insecure-key-change-me")
+DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() == "true"
+ALLOWED_HOSTS = [h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
 
 
 # Application definition
@@ -101,17 +82,25 @@ WSGI_APPLICATION = "stock_research_platform.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'Valuation-web',        # The database name you created
-        'USER': 'andrew',      # The user you created
-        'PASSWORD': '<removed>', # The password you set
-        'HOST': 'localhost',          # Or '127.0.0.1'
-        'PORT': '5432',               # Default PostgreSQL port
+# PostgreSQL when DB_NAME is set, otherwise a local SQLite file so the project runs with zero setup.
+if os.environ.get("DB_NAME"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ["DB_NAME"],
+            "USER": os.environ.get("DB_USER", ""),
+            "PASSWORD": os.environ.get("DB_PASSWORD", ""),
+            "HOST": os.environ.get("DB_HOST", "localhost"),
+            "PORT": os.environ.get("DB_PORT", "5432"),
+        }
     }
-}
-
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -150,23 +139,27 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-# Media files
-# MEDIA_URL and MEDIA_ROOT are still relevant for local dev or if DEFAULT_FILE_STORAGE is not S3
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# File storage: uploaded PDFs go to S3 when a bucket is configured, otherwise to the local
+# media/ folder. S3 URLs are pre-signed and expire after an hour, so the bucket can stay private.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
-# AWS S3 Storage Settings # This section is now moved up
-# Ensure you have 'django-storages' and 'boto3' installed (pip install django-storages boto3)
-# And set the following environment variables:
-# AWS_ACCESS_KEY_ID
-# AWS_SECRET_ACCESS_KEY
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+USE_S3 = bool(AWS_STORAGE_BUCKET_NAME)
 
-# AWS_S3_FILE_OVERWRITE = False # Line 145 - MOVED
-# AWS_S3_OBJECT_PARAMETERS = { # MOVED
-# 'CacheControl': 'max-age=86400',
-# }
-# AWS_LOCATION = 'media' # MOVED
-# AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com' # MOVED
+if USE_S3:
+    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "ap-northeast-2")
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_LOCATION = "media"
+    AWS_QUERYSTRING_AUTH = True
+    AWS_QUERYSTRING_EXPIRE = 3600
+    STORAGES = {
+        "default": {"BACKEND": "storages.backends.s3.S3Storage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -177,9 +170,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = 'users.User'
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-]
+CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -214,6 +205,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
+    # Send decimals (prices, targets) as JSON numbers rather than strings for the frontend.
+    'COERCE_DECIMAL_TO_STRING': False,
 }
 
 # Djoser settings
